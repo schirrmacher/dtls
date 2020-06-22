@@ -1,0 +1,42 @@
+[ ca ]
+default_ca             = CA_default
+
+[ CA_default ]
+default_days           = 999
+default_md             = sha512
+policy                 = policy_match
+
+[ req ]
+days                   = 9999
+default_md             = sha512
+distinguished_name     = req_distinguished_name
+policy                 = policy_anything
+req_extensions         = v3_req
+
+[ req_distinguished_name ]              
+countryName                     = Country Name (2 letter code)
+countryName_default             = DE
+countryName_min                 = 2
+countryName_max                 = 2
+
+localityName                    = Locality Name
+localityName_default            = Cologne
+
+commonName                      = Common Name
+commonName_default              = RootCA
+commonName_max                  = 64
+
+[ policy_anything ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[ usr_cert ]
+basicConstraints=CA:false
+
+[ v3_req ]
+subjectAltName=email:move
