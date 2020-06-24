@@ -97,9 +97,6 @@ int main(void)
   mbedtls_ctr_drbg_context ctr_drbg;
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
-  mbedtls_x509_crt cacert;
-  mbedtls_x509_crt servercert;
-  mbedtls_pk_context pkey;
   mbedtls_timing_delay_context timer;
 #if defined(MBEDTLS_SSL_CACHE_C)
   mbedtls_ssl_cache_context cache;
@@ -113,9 +110,6 @@ int main(void)
 #if defined(MBEDTLS_SSL_CACHE_C)
   mbedtls_ssl_cache_init(&cache);
 #endif
-  mbedtls_x509_crt_init(&cacert);
-  mbedtls_x509_crt_init(&servercert);
-  mbedtls_pk_init(&pkey);
   mbedtls_entropy_init(&entropy);
   mbedtls_ctr_drbg_init(&ctr_drbg);
 
@@ -124,28 +118,20 @@ int main(void)
 #endif
 
   printf("\nStarting server:\n");
-  printf("- Loading the server cert. and key...");
+  printf("- Loading client key...");
   fflush(stdout);
 
-  const char *cafile = "pki/ca.pem";
-  if ((ret = mbedtls_x509_crt_parse_file(&cacert, cafile)) != 0)
-  {
-    printf(" failed\n  !  mbedtls_x509_crt_parse_file returned %d\n\n", ret);
-    goto exit;
-  }
+  const unsigned char psk_key[16] = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+      0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+  size_t psk_len = sizeof(psk_key);
+  const char psk_id[] = "Client_identity";
 
-  const char *serverfile = "pki/server.pem";
-  if ((ret = mbedtls_x509_crt_parse_file(&servercert, serverfile)) != 0)
+  if ((ret = mbedtls_ssl_conf_psk(&conf, psk_key, psk_len,
+                                  (const unsigned char *)psk_id,
+                                  strlen(psk_id))) != 0)
   {
-    printf(" failed\n  !  mbedtls_x509_crt_parse_file returned %d\n\n", ret);
-    goto exit;
-  }
-
-  const char *serverkeyfile = "pki/server-key.pem";
-  if ((ret = mbedtls_pk_parse_keyfile(&pkey, serverkeyfile, NULL)))
-  {
-    printf(" failed\n  !  mbedtls_pk_parse_key returned %d\n\n", ret);
-    goto exit;
+    mbedtls_printf("  mbedtls_ssl_conf_psk returned %d\n\n", ret);
   }
 
   printf(" ok\n");
@@ -192,14 +178,6 @@ int main(void)
                                  mbedtls_ssl_cache_get,
                                  mbedtls_ssl_cache_set);
 #endif
-
-  mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
-  mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
-  if ((ret = mbedtls_ssl_conf_own_cert(&conf, &servercert, &pkey)) != 0)
-  {
-    printf(" failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n\n", ret);
-    goto exit;
-  }
 
   if ((ret = mbedtls_ssl_cookie_setup(&cookie_ctx,
                                       mbedtls_ctr_drbg_random, &ctr_drbg)) != 0)
@@ -264,22 +242,22 @@ reset:
   printf("- Performing the DTLS handshake...");
   fflush(stdout);
 
-  do
-    ret = mbedtls_ssl_handshake(&ssl);
-  while (ret == MBEDTLS_ERR_SSL_WANT_READ ||
-         ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+  // do
+  //   ret = mbedtls_ssl_handshake(&ssl);
+  // while (ret == MBEDTLS_ERR_SSL_WANT_READ ||
+  //        ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
-  if (ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED)
-  {
-    printf(" hello verification requested\n");
-    ret = 0;
-    goto reset;
-  }
-  else if (ret != 0)
-  {
-    printf(" failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", (unsigned int)-ret);
-    goto reset;
-  }
+  // if (ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED)
+  // {
+  //   printf(" hello verification requested\n");
+  //   ret = 0;
+  //   goto reset;
+  // }
+  // else if (ret != 0)
+  // {
+  //   printf(" failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", (unsigned int)-ret);
+  //   goto reset;
+  // }
   printf(" ok\n");
 
   printf("- Read from client:");
@@ -352,9 +330,6 @@ exit:
   mbedtls_net_free(&client_fd);
   mbedtls_net_free(&listen_fd);
 
-  mbedtls_x509_crt_free(&cacert);
-  mbedtls_x509_crt_free(&servercert);
-  mbedtls_pk_free(&pkey);
   mbedtls_ssl_free(&ssl);
   mbedtls_ssl_config_free(&conf);
   mbedtls_ssl_cookie_free(&cookie_ctx);
