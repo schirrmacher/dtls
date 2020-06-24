@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     }
 
     const int ciphersuites[] = {
-        MBEDTLS_TLS_DHE_PSK_WITH_AES_128_GCM_SHA256, 0};
+        MBEDTLS_TLS_PSK_WITH_AES_128_GCM_SHA256, 0};
 
     mbedtls_ssl_conf_ciphersuites(&conf, ciphersuites);
 
